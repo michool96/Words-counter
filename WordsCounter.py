@@ -30,26 +30,26 @@ def analyze_word_gaps(audio_path, target_words, fuzzy_threshold):
     
     output = ""
     if not timestamps:
-        output += f"Nie znaleziono słów: {target_words}\n"
+        output += f"No occurrences found for: {target_words}\n"
         return output
     
-    output += "=== WYSTĄPIENIA SŁÓW ===\n"
+    output += "=== WORD OCCURRENCES ===\n"
     for t in timestamps:
         output += f"- {t:.2f} s\n"
     
     gaps = [timestamps[i+1] - timestamps[i] for i in range(len(timestamps)-1)]
-    output += "\n=== ODSTĘPY CZASOWE (sekundy) ===\n"
+    output += "\n=== TIME GAPS (seconds) ===\n"
     for g in gaps:
         output += f"- {g:.2f} s\n"
     
-    output += "\n=== STATYSTYKI ===\n"
-    output += f"Słowo wystąpiło: {len(timestamps)} razy\n"
+    output += "\n=== STATISTICS ===\n"
+    output += f"Word occurred: {len(timestamps)} times\n"
     if gaps:
-        output += f"Średni odstęp: {sum(gaps)/len(gaps):.2f} s\n"
-        output += f"Najkrótszy: {min(gaps):.2f} s\n"
-        output += f"Najdłuższy: {max(gaps):.2f} s\n"
+        output += f"Average gap: {sum(gaps)/len(gaps):.2f} s\n"
+        output += f"Shortest: {min(gaps):.2f} s\n"
+        output += f"Longest: {max(gaps):.2f} s\n"
     else:
-        output += "Wystąpiło tylko raz, brak odstępów.\n"
+        output += "Occurred only once, no gaps.\n"
     
     return output
 
@@ -65,11 +65,11 @@ def run_analysis():
     threshold_input = threshold_entry.get()
     
     if not audio_file:
-        messagebox.showwarning("Brak pliku", "Wybierz plik audio!")
+        messagebox.showwarning("No file", "Please select an audio file!")
         return
     
     if not words_input:
-        messagebox.showwarning("Brak słów", "Wpisz przynajmniej jedno target word!")
+        messagebox.showwarning("No words", "Enter at least one target word!")
         return
     
     target_words = [w.strip().lower() for w in words_input.split(",") if w.strip()]
@@ -77,39 +77,40 @@ def run_analysis():
     try:
         fuzzy_threshold = int(threshold_input) if threshold_input else None
     except ValueError:
-        messagebox.showwarning("Błędny threshold", "Threshold musi być liczbą od 0 do 100")
+        messagebox.showwarning("Invalid threshold", "Threshold must be a number between 0 and 100")
         return
     
     log_text.delete(1.0, tk.END)
-    log_text.insert(tk.END, "Analiza w toku, czekaj...\n")
+    log_text.insert(tk.END, "Analyzing, please wait...\n")
     root.update()
     
     try:
         output = analyze_word_gaps(audio_file, target_words, fuzzy_threshold)
         log_text.insert(tk.END, output)
     except Exception as e:
-        log_text.insert(tk.END, f"Błąd: {e}")
+        log_text.insert(tk.END, f"Error: {e}")
 
 # --- GUI ---
 root = tk.Tk()
-root.title("Words Counter")
+root.title("Word Gap Analyzer")
 
-tk.Label(root, text="Plik audio:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
+tk.Label(root, text="Audio file:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
 file_entry = tk.Entry(root, width=50)
 file_entry.grid(row=0, column=1, padx=5, pady=5)
-tk.Button(root, text="Przeglądaj", command=browse_file).grid(row=0, column=2, padx=5, pady=5)
+tk.Button(root, text="Browse", command=browse_file).grid(row=0, column=2, padx=5, pady=5)
 
-tk.Label(root, text="Target words (oddziel przecinkami):").grid(row=1, column=0, sticky="w", padx=5, pady=5)
+tk.Label(root, text="Target words (comma-separated):").grid(row=1, column=0, sticky="w", padx=5, pady=5)
 words_entry = tk.Entry(root, width=50)
 words_entry.grid(row=1, column=1, columnspan=2, padx=5, pady=5)
 
-tk.Label(root, text="Fuzzy threshold (0-100, opcjonalne):").grid(row=2, column=0, sticky="w", padx=5, pady=5)
+tk.Label(root, text="Fuzzy threshold (0-100, optional):").grid(row=2, column=0, sticky="w", padx=5, pady=5)
 threshold_entry = tk.Entry(root, width=10)
 threshold_entry.grid(row=2, column=1, sticky="w", padx=5, pady=5)
 
-tk.Button(root, text="Analizuj", command=run_analysis).grid(row=3, column=1, pady=10)
+tk.Button(root, text="Analyze", command=run_analysis).grid(row=3, column=1, pady=10)
 
 log_text = scrolledtext.ScrolledText(root, width=70, height=20)
 log_text.grid(row=4, column=0, columnspan=3, padx=5, pady=5)
 
 root.mainloop()
+
