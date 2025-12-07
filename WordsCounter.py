@@ -92,7 +92,7 @@ def run_analysis():
 
 # --- GUI ---
 root = tk.Tk()
-root.title("Word Gap Analyzer")
+root.title("WordsCounter")
 
 tk.Label(root, text="Audio file:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
 file_entry = tk.Entry(root, width=50)
