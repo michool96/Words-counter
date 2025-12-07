@@ -7,49 +7,46 @@ def analyze_word_gaps(audio_path, target_words, fuzzy_threshold):
     model = whisper.load_model("small")
     result = model.transcribe(audio_path)
     
-    timestamps = []
+    # przygotowujemy słownik dla każdego target word
+    word_timestamps = {w: [] for w in target_words}
     
     for segment in result["segments"]:
         text = segment["text"].lower()
-        found = False
-        if fuzzy_threshold is None:
-            for w in target_words:
-                if w in text:
-                    timestamps.append(segment["start"])
-                    found = True
-                    break
-        else:
-            for word in text.split():
-                for w in target_words:
-                    if fuzz.ratio(word, w) >= fuzzy_threshold:
-                        timestamps.append(segment["start"])
-                        found = True
-                        break
-                if found:
-                    break
+        words_in_segment = text.split()
+        
+        for target in target_words:
+            if fuzzy_threshold is None:
+                if target in text:
+                    word_timestamps[target].append(segment["start"])
+            else:
+                for word in words_in_segment:
+                    if fuzz.ratio(word, target) >= fuzzy_threshold:
+                        word_timestamps[target].append(segment["start"])
+                        break  # znaleziono w tym segmencie
     
+    # przygotowanie outputu
     output = ""
-    if not timestamps:
-        output += f"No occurrences found for: {target_words}\n"
-        return output
-    
-    output += "=== WORD OCCURRENCES ===\n"
-    for t in timestamps:
-        output += f"- {t:.2f} s\n"
-    
-    gaps = [timestamps[i+1] - timestamps[i] for i in range(len(timestamps)-1)]
-    output += "\n=== TIME GAPS (seconds) ===\n"
-    for g in gaps:
-        output += f"- {g:.2f} s\n"
-    
-    output += "\n=== STATISTICS ===\n"
-    output += f"Word occurred: {len(timestamps)} times\n"
-    if gaps:
-        output += f"Average gap: {sum(gaps)/len(gaps):.2f} s\n"
-        output += f"Shortest: {min(gaps):.2f} s\n"
-        output += f"Longest: {max(gaps):.2f} s\n"
-    else:
-        output += "Occurred only once, no gaps.\n"
+    for target, timestamps in word_timestamps.items():
+        output += f"\n--- {target.upper()} ---\n"
+        if not timestamps:
+            output += "No occurrences found.\n"
+            continue
+        
+        output += f"Total occurrences: {len(timestamps)}\n"
+        output += "Occurrences at times:\n"
+        for t in timestamps:
+            output += f"- {t:.2f} s\n"
+        
+        gaps = [timestamps[i+1] - timestamps[i] for i in range(len(timestamps)-1)]
+        if gaps:
+            output += "Time gaps (seconds):\n"
+            for g in gaps:
+                output += f"- {g:.2f} s\n"
+            output += f"Average gap: {sum(gaps)/len(gaps):.2f} s\n"
+            output += f"Shortest gap: {min(gaps):.2f} s\n"
+            output += f"Longest gap: {max(gaps):.2f} s\n"
+        else:
+            output += "Occurred only once, no gaps.\n"
     
     return output
 
@@ -113,4 +110,3 @@ log_text = scrolledtext.ScrolledText(root, width=70, height=20)
 log_text.grid(row=4, column=0, columnspan=3, padx=5, pady=5)
 
 root.mainloop()
-
