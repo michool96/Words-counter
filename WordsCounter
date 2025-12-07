@@ -1,0 +1,115 @@
+import tkinter as tk
+from tkinter import filedialog, messagebox, scrolledtext
+import whisper
+from rapidfuzz import fuzz
+
+def analyze_word_gaps(audio_path, target_words, fuzzy_threshold):
+    model = whisper.load_model("small")
+    result = model.transcribe(audio_path)
+    
+    timestamps = []
+    
+    for segment in result["segments"]:
+        text = segment["text"].lower()
+        found = False
+        if fuzzy_threshold is None:
+            for w in target_words:
+                if w in text:
+                    timestamps.append(segment["start"])
+                    found = True
+                    break
+        else:
+            for word in text.split():
+                for w in target_words:
+                    if fuzz.ratio(word, w) >= fuzzy_threshold:
+                        timestamps.append(segment["start"])
+                        found = True
+                        break
+                if found:
+                    break
+    
+    output = ""
+    if not timestamps:
+        output += f"Nie znaleziono słów: {target_words}\n"
+        return output
+    
+    output += "=== WYSTĄPIENIA SŁÓW ===\n"
+    for t in timestamps:
+        output += f"- {t:.2f} s\n"
+    
+    gaps = [timestamps[i+1] - timestamps[i] for i in range(len(timestamps)-1)]
+    output += "\n=== ODSTĘPY CZASOWE (sekundy) ===\n"
+    for g in gaps:
+        output += f"- {g:.2f} s\n"
+    
+    output += "\n=== STATYSTYKI ===\n"
+    output += f"Słowo wystąpiło: {len(timestamps)} razy\n"
+    if gaps:
+        output += f"Średni odstęp: {sum(gaps)/len(gaps):.2f} s\n"
+        output += f"Najkrótszy: {min(gaps):.2f} s\n"
+        output += f"Najdłuższy: {max(gaps):.2f} s\n"
+    else:
+        output += "Wystąpiło tylko raz, brak odstępów.\n"
+    
+    return output
+
+def browse_file():
+    filename = filedialog.askopenfilename(filetypes=[("Audio files", "*.mp3 *.m4a *.wav")])
+    if filename:
+        file_entry.delete(0, tk.END)
+        file_entry.insert(0, filename)
+
+def run_analysis():
+    audio_file = file_entry.get()
+    words_input = words_entry.get()
+    threshold_input = threshold_entry.get()
+    
+    if not audio_file:
+        messagebox.showwarning("Brak pliku", "Wybierz plik audio!")
+        return
+    
+    if not words_input:
+        messagebox.showwarning("Brak słów", "Wpisz przynajmniej jedno target word!")
+        return
+    
+    target_words = [w.strip().lower() for w in words_input.split(",") if w.strip()]
+    
+    try:
+        fuzzy_threshold = int(threshold_input) if threshold_input else None
+    except ValueError:
+        messagebox.showwarning("Błędny threshold", "Threshold musi być liczbą od 0 do 100")
+        return
+    
+    log_text.delete(1.0, tk.END)
+    log_text.insert(tk.END, "Analiza w toku, czekaj...\n")
+    root.update()
+    
+    try:
+        output = analyze_word_gaps(audio_file, target_words, fuzzy_threshold)
+        log_text.insert(tk.END, output)
+    except Exception as e:
+        log_text.insert(tk.END, f"Błąd: {e}")
+
+# --- GUI ---
+root = tk.Tk()
+root.title("Words Counter")
+
+tk.Label(root, text="Plik audio:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
+file_entry = tk.Entry(root, width=50)
+file_entry.grid(row=0, column=1, padx=5, pady=5)
+tk.Button(root, text="Przeglądaj", command=browse_file).grid(row=0, column=2, padx=5, pady=5)
+
+tk.Label(root, text="Target words (oddziel przecinkami):").grid(row=1, column=0, sticky="w", padx=5, pady=5)
+words_entry = tk.Entry(root, width=50)
+words_entry.grid(row=1, column=1, columnspan=2, padx=5, pady=5)
+
+tk.Label(root, text="Fuzzy threshold (0-100, opcjonalne):").grid(row=2, column=0, sticky="w", padx=5, pady=5)
+threshold_entry = tk.Entry(root, width=10)
+threshold_entry.grid(row=2, column=1, sticky="w", padx=5, pady=5)
+
+tk.Button(root, text="Analizuj", command=run_analysis).grid(row=3, column=1, pady=10)
+
+log_text = scrolledtext.ScrolledText(root, width=70, height=20)
+log_text.grid(row=4, column=0, columnspan=3, padx=5, pady=5)
+
+root.mainloop()
