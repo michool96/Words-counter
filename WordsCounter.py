@@ -7,7 +7,6 @@ def analyze_word_gaps(audio_path, target_words, fuzzy_threshold):
     model = whisper.load_model("small")
     result = model.transcribe(audio_path)
     
-    # przygotowujemy słownik dla każdego target word
     word_timestamps = {w: [] for w in target_words}
     
     for segment in result["segments"]:
@@ -22,9 +21,8 @@ def analyze_word_gaps(audio_path, target_words, fuzzy_threshold):
                 for word in words_in_segment:
                     if fuzz.ratio(word, target) >= fuzzy_threshold:
                         word_timestamps[target].append(segment["start"])
-                        break  # znaleziono w tym segmencie
+                        break  
     
-    # przygotowanie outputu
     output = ""
     for target, timestamps in word_timestamps.items():
         output += f"\n--- {target.upper()} ---\n"
